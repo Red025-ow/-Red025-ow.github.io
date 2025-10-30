@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>单位转换工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .unit-card {
+                @apply p-4 rounded-lg shadow-md border border-gray-200 transition-all hover:shadow-lg;
+            }
+            .input-group {
+                @apply mb-4;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="w-full max-w-2xl bg-white rounded-xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold text-center text-gray-800 mb-6 flex items-center justify-center">
+            <i class="fa fa-exchange text-primary mr-2"></i>单位转换工具
+        </h1>
+
+        <!-- 转换类型选择 -->
+        <div class="input-group">
+            <label class="block text-gray-700 font-medium mb-2">转换类型</label>
+            <select id="unitType" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors">
+                <option value="length">长度单位</option>
+                <option value="weight">重量单位</option>
+                <option value="area">面积单位</option>
+            </select>
+        </div>
+
+        <!-- 源单位选择 -->
+        <div class="input-group">
+            <label class="block text-gray-700 font-medium mb-2">源单位</label>
+            <select id="fromUnit" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors">
+                <!-- 初始加载长度单位 -->
+                <option value="meter">米 (m)</option>
+                <option value="centimeter">厘米 (cm)</option>
+                <option value="millimeter">毫米 (mm)</option>
+                <option value="kilometer">千米 (km)</option>
+                <option value="foot">英尺 (ft)</option>
+                <option value="inch">英寸 (in)</option>
+            </select>
+        </div>
+
+        <!-- 目标单位选择 -->
+        <div class="input-group">
+            <label class="block text-gray-700 font-medium mb-2">目标单位</label>
+            <select id="toUnit" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors">
+                <!-- 初始加载长度单位 -->
+                <option value="meter">米 (m)</option>
+                <option value="centimeter">厘米 (cm)</option>
+                <option value="millimeter">毫米 (mm)</option>
+                <option value="kilometer">千米 (km)</option>
+                <option value="foot">英尺 (ft)</option>
+                <option value="inch">英寸 (in)</option>
+            </select>
+        </div>
+
+        <!-- 数值输入 -->
+        <div class="input-group">
+            <label class="block text-gray-700 font-medium mb-2">数值</label>
+            <input type="number" id="value" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors" value="1" min="0">
+        </div>
+
+        <!-- 转换按钮 -->
+        <div class="flex justify-center mb-6">
+            <button id="convertBtn" class="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors flex items-center">
+                <i class="fa fa-calculator mr-2"></i>转换
+            </button>
+        </div>
+
+        <!-- 结果显示 -->
+        <div id="result" class="p-4 bg-gray-50 rounded-lg text-center text-lg font-medium text-gray-800 hidden">
+            结果将显示在这里
+        </div>
+    </div>
+
+    <script>
+        // 单位换算系数配置
+        const unitConfig = {
+            length: {
+                meter: 1,
+                centimeter: 0.01,
+                millimeter: 0.001,
+                kilometer: 1000,
+                foot: 0.3048,
+                inch: 0.0254
+            },
+            weight: {
+                kilogram: 1,
+                gram: 0.001,
+                ton: 1000,
+                pound: 0.453592,
+                ounce: 0.0283495
+            },
+            area: {
+                squareMeter: 1,
+                squareCentimeter: 0.0001,
+                squareKilometer: 1000000,
+                hectare: 10000,
+                squareFoot: 0.092903,
+                squareInch: 0.00064516
+            }
+        };
+
+        // 单位名称映射
+        const unitNames = {
+            length: {
+                meter: '米',
+                centimeter: '厘米',
+                millimeter: '毫米',
+                kilometer: '千米',
+                foot: '英尺',
+                inch: '英寸'
+            },
+            weight: {
+                kilogram: '千克',
+                gram: '克',
+                ton: '吨',
+                pound: '磅',
+                ounce: '盎司'
+            },
+            area: {
+                squareMeter: '平方米',
+                squareCentimeter: '平方厘米',
+                squareKilometer: '平方千米',
+                hectare: '公顷',
+                squareFoot: '平方英尺',
+                squareInch: '平方英寸'
+            }
+        };
+
+        // 元素获取
+        const unitType = document.getElementById('unitType');
+        const fromUnit = document.getElementById('fromUnit');
+        const toUnit = document.getElementById('toUnit');
+        const valueInput = document.getElementById('value');
+        const convertBtn = document.getElementById('convertBtn');
+        const resultDiv = document.getElementById('result');
+
+        // 切换单位类型时更新单位列表
+        unitType.addEventListener('change', function() {
+            const type = this.value;
+            const units = Object.keys(unitConfig[type]);
+            fromUnit.innerHTML = '';
+            toUnit.innerHTML = '';
+            units.forEach(unit => {
+                const option = document.createElement('option');
+                option.value = unit;
+                option.textContent = `${unitNames[type][unit]} (${unit})`;
+                fromUnit.appendChild(option);
+                toUnit.appendChild(option.cloneNode(true));
+            });
+            resultDiv.classList.add('hidden');
+        });
+
+        // 转换逻辑
+        function convert() {
+            const type = unitType.value;
+            const from = fromUnit.value;
+            const to = toUnit.value;
+            const value = parseFloat(valueInput.value);
+
+            if (isNaN(value) || value < 0) {
+                alert('请输入有效的非负数值');
+                return;
+            }
+
+            const fromFactor = unitConfig[type][from];
+            const toFactor = unitConfig[type][to];
+            const result = (value * fromFactor) / toFactor;
+
+            resultDiv.textContent = `${value} ${unitNames[type][from]} = ${result.toFixed(4)} ${unitNames[type][to]}`;
+            resultDiv.classList.remove('hidden');
+        }
+
+        // 按钮点击事件
+        convertBtn.addEventListener('click', convert);
+
+        // 输入框回车事件
+        valueInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                convert();
+            }
+        });
+    </script>
+</body>
+</html>
